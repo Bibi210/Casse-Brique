@@ -29,14 +29,25 @@ static void simu(void);
 static void draw(void);
 static void sortie(void);
 static void print_objects(void);
-void keydown_func(int);
+static void keydown_func(int);
+static void init_bricks();
+static void collision_tests(void);
 /*!\brief une surface représentant un quadrilatère */
 static surface_t *_quad = NULL;
 /*!\brief une surface représentant un cube */
 static surface_t *_cube = NULL;
+/*!\brief une surface représentant un Pad */
 static surface_t *_paddle = NULL;
 /*!\brief une surface représentant une sphère (pour la balle) */
 static surface_t *_sphere = NULL;
+static liste_t *_bricks = NULL;
+typedef struct brick_t
+{
+  surface_t *brick_surface;
+  vec3 brick_coords;
+  vec3 brick_size;
+} brick_t;
+
 /*!\brief le plateau */
 static unsigned int *_plat = NULL;
 /*!\brief la largeur du plateau */
@@ -95,6 +106,8 @@ int main(int argc, char **argv)
  * utilisées dans ce code */
 void init(void)
 {
+  _bricks = list_init(sizeof(brick_t *));
+  parsing();
   GLuint id;
   //ANCHOR couleurs des elements
   vec4 r = {1.0f, 0.0f, 0.0f, 1}, g = {0.0f, 1.0f, 0.0f, 1}, b = {1.0f, 1.0f, 0.7f, 1};
@@ -102,10 +115,17 @@ void init(void)
   //ANCHOR Interieur du casse brique
   _quad = mkQuad(); /* ça fait 2 triangles        */
   // ANCHOR Bordure du casse brique
-  _cube = mkCube();   /* ça fait 2x6 triangles      */
+  _cube = mkCube(); /* ça fait 2x6 triangles      */
+  // ANCHOR Le pad de jeu
   _paddle = mkCube(); /* ça fait 2x6 triangles      */
   // ANCHOR balle
   _sphere = mkSphere(12, 4); /* ça fait 2x12x5 triangles   */
+  for (cell_t *encours = _bricks->premier ; encours != NULL ; encours++){
+    brick_t* une_brique = encours->data;
+    une_brique -> brick_surface = mkCube();
+    une_brique -> brick_surface->dcolor = r;
+  }
+
   /* on change les couleurs de surfaces */
   _sphere->dcolor = r;
   _quad->dcolor = g;
@@ -147,23 +167,15 @@ void simu(void)
     firstTime = 0;
     return;
   }
+  collision_tests();
+
   /* physique de base : mécanique newtonienne */
   _ball.x += _ballv.x * dt;
   _ball.y += _ballv.y * dt;
-  /* tests de collision bidons et partiellement faux, à améliorer. Il
-   * se peut que la balle reste coincée au niveau d'un bord (ou
-   * obstacle) */
+}
 
-  float lg = -_pW + 2.0f + _ball.z; /* limite gauche */
-  float ld = _pW - 2.0f - _ball.z;  /* limite droite */
-  float lb = _pH - 2.0f - _ball.z;  /* limite basse */
-  float lh = -_pH + 2.0f + _ball.z; /* limite haute */
-  if (_ball.x <= lg || _ball.x >= ld)
-    _ballv.x = -_ballv.x;
-  if (_ball.y <= lh || _ball.y >= lb){
-    _ballv.y = -_ballv.y;
-  }
-    
+void collision_tests()
+{
 
   if (_paddle_data.x - _paddle_data.w <= -_pW + 2.0f)
   {
@@ -176,16 +188,26 @@ void simu(void)
 
   if (_ball.x >= _paddle_data.x - _paddle_data.w && _ball.x <= _paddle_data.x + _paddle_data.w)
   {
-    if (_ball.y + _pH- 2.0f <= _paddle_data.y)
+    if (_ball.y + _pH - 4.0f <= _paddle_data.y)
     {
-      print_objects();
       _ballv.x = -_ballv.x;
-      _ballv.y = -_ballv.y;
+      _ballv.y = _ballv.y;
     }
+  }
+
+  float lg = -_pW + 2.0f + _ball.z; /* limite gauche */
+  float ld = _pW - 2.0f - _ball.z;  /* limite droite */
+  float lb = _pH - 2.0f - _ball.z;  /* limite basse */
+  float lh = -_pH + 2.0f + _ball.z; /* limite haute */
+  if (_ball.x <= lg || _ball.x >= ld)
+    _ballv.x = -_ballv.x;
+  if (_ball.y <= lh || _ball.y >= lb)
+  {
+    _ballv.y = -_ballv.y;
   }
 }
 
-void keydown_func(int keypressed)
+static void keydown_func(int keypressed)
 {
 
   switch (keypressed)
@@ -255,10 +277,44 @@ void draw(void)
   translate(nmv, 0.0f, 1.0f, 0.0f);
   scale(nmv, _ball.z, _ball.z, _ball.z);
   transform_n_raster(_sphere, nmv, projMat);
+
+  display_bricks(mvMat,projMat,nmv);
   /* déclarer qu'on a changé (en bas niveau) des pixels du screen  */
   gl4dpScreenHasChanged();
   /* fonction permettant de raffraîchir l'ensemble de la fenêtre*/
   gl4dpUpdateScreen(NULL);
+}
+
+void parsing()
+{
+  char *line_to_parse = calloc(1000, sizeof(char));
+  char *nb_to_parse = calloc(1000, sizeof(char));
+  assert(line_to_parse);
+  assert(nb_to_parse);
+
+  FILE *brick_file = fopen("bricks", "r");
+  assert(brick_file);
+  fgets(line_to_parse, 1000, brick_file);
+  fgets(line_to_parse, 1000, brick_file);
+  fgets(line_to_parse, 1000, brick_file);
+
+  while (feof(brick_file) == 0)
+  {
+  }
+}
+
+static void display_bricks(float mvMat[16], float projMat[16], float nmv[16])
+{
+  for (cell_t *encours = _bricks->premier; encours != NULL; encours = encours->next)
+  {
+    brick_t *brick = encours->data;
+    vec3 brick_coords = brick->brick_coords;
+    vec3 brick_size = brick->brick_size;
+    memcpy(nmv, mvMat, sizeof nmv);
+    translate(nmv, brick_coords.x, brick_coords.y, brick_coords.z);
+    scale(nmv, brick_size.x, brick_size.y, brick_size.z);
+    transform_n_raster(_sphere, nmv, projMat);
+  }
 }
 
 /*!\brief à appeler à la sortie du programme. */
@@ -292,7 +348,8 @@ void sortie(void)
   gl4duClean(GL4DU_ALL);
 }
 
-void print_objects(){
-  printf("Ball Coords X:%f,Y:%f,Z:%f\n",_ball.x,_ball.y,_ball.z);
-  printf("Paddle Coords X:%f,Y:%f,Z:%f\n",_paddle_data.x,_paddle_data.y,_paddle_data.z);
+void print_objects()
+{
+  printf("Ball Coords X:%f,Y:%f,Z:%f\n", _ball.x, _ball.y, _ball.z);
+  printf("Paddle Coords X:%f,Y:%f,Z:%f\n", _paddle_data.x, _paddle_data.y, _paddle_data.z);
 }

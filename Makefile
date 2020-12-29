@@ -21,7 +21,7 @@ PROGNAME = moteur_casse_briques
 VERSION = 0.3
 distdir = $(PACKNAME)_$(PROGNAME)-$(VERSION)
 HEADERS = moteur.h
-SOURCES = window.c primitives.c transformations.c scene.c geometry.c plateau.c
+SOURCES = window.c primitives.c transformations.c scene.c geometry.c plateau.c liste.c
 MSVCSRC = $(patsubst %,<ClCompile Include=\"%\\\" \\/>,$(SOURCES))
 OBJ = $(SOURCES:.c=.o)
 DOXYFILE = documentation/Doxyfile

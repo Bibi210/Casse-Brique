@@ -15,6 +15,7 @@
 #  include <GL4D/gl4dm.h>
 
 #include <float.h>
+#include "liste.h"
 #define EPSILON ((double)FLT_EPSILON)
 
 #  ifdef __cplusplus
