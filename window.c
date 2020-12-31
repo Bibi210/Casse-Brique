@@ -10,6 +10,11 @@
  */
 #include <assert.h>
 #include <time.h>
+
+//TODO Switch _bricks from list to vec
+//TODO Improve collision
+
+
 /* inclusion des entêtes de fonctions de gestion de primitives simples
  * de dessin. La lettre p signifie aussi bien primitive que
  * pédagogique. */
@@ -30,8 +35,11 @@ static void draw(void);
 static void sortie(void);
 static void print_objects(void);
 static void keydown_func(int);
-static void init_bricks();
+
 static void collision_tests(void);
+static void parsing();
+static void display_bricks(float *, float *, float *);
+
 /*!\brief une surface représentant un quadrilatère */
 static surface_t *_quad = NULL;
 /*!\brief une surface représentant un cube */
@@ -47,6 +55,7 @@ typedef struct brick_t
   vec3 brick_coords;
   vec3 brick_size;
 } brick_t;
+static void print_brick_info(brick_t*);
 
 /*!\brief le plateau */
 static unsigned int *_plat = NULL;
@@ -87,6 +96,7 @@ int main(int argc, char **argv)
   /* Pour forcer la désactivation de la synchronisation verticale */
   SDL_GL_SetSwapInterval(0);
   init();
+
   /* création d'un screen GL4Dummies (texture dans laquelle nous
    * pouvons dessiner) aux dimensions de la fenêtre */
   gl4dpInitScreen();
@@ -120,10 +130,11 @@ void init(void)
   _paddle = mkCube(); /* ça fait 2x6 triangles      */
   // ANCHOR balle
   _sphere = mkSphere(12, 4); /* ça fait 2x12x5 triangles   */
-  for (cell_t *encours = _bricks->premier ; encours != NULL ; encours++){
-    brick_t* une_brique = encours->data;
-    une_brique -> brick_surface = mkCube();
-    une_brique -> brick_surface->dcolor = r;
+  for (cell_t *encours = _bricks->premier; encours != NULL; encours = encours->next)
+  {
+    brick_t *une_brique = encours->data;
+    une_brique->brick_surface = mkCube();
+    une_brique->brick_surface->dcolor = r;
   }
 
   /* on change les couleurs de surfaces */
@@ -195,6 +206,20 @@ void collision_tests()
     }
   }
 
+  for (cell_t *encours = _bricks->premier; encours != NULL; encours = encours->next)
+  {
+    brick_t *br = encours->data;
+    if (br->brick_coords.x + br->brick_size.x >= _ball.x + _ball.z && br->brick_coords.x - br->brick_size.x <= _ball.x - _ball.z)
+    {
+      if (br->brick_coords.y + br->brick_size.y >= _ball.y + _ball.z && br->brick_coords.y - br->brick_size.y <= _ball.y - _ball.z)
+      {
+        _ballv.x = -_ballv.x;
+        _ballv.y = _ballv.y;
+      }
+    }
+  }
+
+  //TODO find how to improve this
   float lg = -_pW + 2.0f + _ball.z; /* limite gauche */
   float ld = _pW - 2.0f - _ball.z;  /* limite droite */
   float lb = _pH - 2.0f - _ball.z;  /* limite basse */
@@ -278,7 +303,7 @@ void draw(void)
   scale(nmv, _ball.z, _ball.z, _ball.z);
   transform_n_raster(_sphere, nmv, projMat);
 
-  display_bricks(mvMat,projMat,nmv);
+  display_bricks(mvMat, projMat, nmv);
   /* déclarer qu'on a changé (en bas niveau) des pixels du screen  */
   gl4dpScreenHasChanged();
   /* fonction permettant de raffraîchir l'ensemble de la fenêtre*/
@@ -287,12 +312,17 @@ void draw(void)
 
 void parsing()
 {
-  char *line_to_parse = calloc(1000, sizeof(char));
-  char *nb_to_parse = calloc(1000, sizeof(char));
+  int size_test = 0;
+  int next_champ = 0;
+  brick_t *br = malloc(sizeof(brick_t *));
+
+  char line_to_parse[1000];
+  char nb_to_parse[1000];
+  FILE *brick_file = fopen("bricks", "r");
+
   assert(line_to_parse);
   assert(nb_to_parse);
 
-  FILE *brick_file = fopen("bricks", "r");
   assert(brick_file);
   fgets(line_to_parse, 1000, brick_file);
   fgets(line_to_parse, 1000, brick_file);
@@ -300,7 +330,69 @@ void parsing()
 
   while (feof(brick_file) == 0)
   {
+    fgets(line_to_parse, 1000, brick_file);
+    for (int i = 0, t = 0; line_to_parse[i] != '\0'; i++)
+    {
+      if (line_to_parse[i] == ';')
+      {
+        nb_to_parse[t] = '\0';
+        float nb = strtof(nb_to_parse,NULL);
+        t = 0;
+        if (size_test == 0)
+        {
+          switch (next_champ)
+          {
+          case 0:
+            br->brick_coords.x = nb;
+            next_champ++;
+            break;
+          case 1:
+            br->brick_coords.y = nb;
+            next_champ++;
+            break;
+          case 2:
+            br->brick_coords.z = nb;
+            size_test++;
+            next_champ = 0;
+            break;
+          default:
+            break;
+          }
+        }
+        else
+        {
+          switch (next_champ)
+          {
+          case 0:
+            br->brick_size.x = nb;
+            next_champ++;
+            break;
+          case 1:
+            br->brick_size.y = nb;
+            next_champ++;
+            break;
+          case 2:
+            br->brick_size.z = nb;
+            size_test = 0;
+            next_champ = 0;
+            break;
+          default:
+            break;
+          }
+        }
+      }
+
+      else if ((line_to_parse[i] >= '0' && line_to_parse[i] <= '9') || line_to_parse[i] == '.')
+      {
+        nb_to_parse[t] = line_to_parse[i];
+        t++;
+      }
+    }
+    print_brick_info(br);
+    list_push(_bricks, br);
+    list_printf(_bricks,(void*)print_brick_info);
   }
+  free(br);
 }
 
 static void display_bricks(float mvMat[16], float projMat[16], float nmv[16])
@@ -315,6 +407,17 @@ static void display_bricks(float mvMat[16], float projMat[16], float nmv[16])
     scale(nmv, brick_size.x, brick_size.y, brick_size.z);
     transform_n_raster(_sphere, nmv, projMat);
   }
+}
+
+static void print_brick_info(brick_t* brick)
+{
+    printf("BrickInfo:\nCoord:\nX:%f,Y:%f,Z:%f\nSize:\nX:%f,Y:%f,Z:%f\n",
+           brick->brick_coords.x,
+           brick->brick_coords.y,
+           brick->brick_coords.z,
+           brick->brick_size.x,
+           brick->brick_size.y,
+           brick->brick_size.z);
 }
 
 /*!\brief à appeler à la sortie du programme. */

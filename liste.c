@@ -15,7 +15,7 @@ extern liste_t *list_init(size_t data_size)
 }
 
 // list to insert at head, data, size of data in byte
-extern void list_push_front(liste_t *l, void *data)
+extern void list_push(liste_t *l, void *data)
 {
     cell_t *nouveau = malloc(sizeof(l->data_size));
     assert(nouveau);
@@ -34,7 +34,7 @@ extern void list_insert_at(liste_t *l, void *data, unsigned long long n)
 {
     if (n == 0)
     {
-        list_push_front(l, data);
+        list_push(l, data);
     }
     else if (n >= l->list_size)
     {
@@ -67,7 +67,7 @@ void list_append(liste_t *l, void *data)
 {
     if (l->list_size == 0)
     {
-        list_push_front(l, data);
+        list_push(l, data);
     }
     else
     {
@@ -89,7 +89,7 @@ void list_append(liste_t *l, void *data)
     }
     l->list_size++;
 }
-extern void list_print(liste_t *l, void print_func(void *))
+extern void list_printf(liste_t *l, void print_func(void *))
 {
     for (cell_t *current = l->premier; current != NULL; current = current->next)
     {
