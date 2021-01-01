@@ -69,7 +69,7 @@ static const int _wH = 512;
 //!  translate Z du paddle paddle
 /*!\brief ma balle est codée sur un vec3, x est x, y est z et z est
  * son rayon */
-static vec3 _ball = {0, 0, 0.84f};
+static vec3 _ball = {0, -_pH + 5, 0.84f};
 static vec4 _paddle_data = {0, 1.0f, -_pH + 3, 3.1f};
 float _mouv_coord = 0.80f;
 
@@ -358,7 +358,6 @@ void parsing()
   assert(nb_to_parse);
 
   assert(brick_file);
-  fgets(line_to_parse, 1000, brick_file);
   fgets(line_to_parse, 1000, brick_file);
   fgets(line_to_parse, 1000, brick_file);
 
