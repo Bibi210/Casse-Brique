@@ -14,7 +14,6 @@
 //TODO Switch _bricks from list to vec
 //TODO Improve collision
 
-
 /* inclusion des entêtes de fonctions de gestion de primitives simples
  * de dessin. La lettre p signifie aussi bien primitive que
  * pédagogique. */
@@ -36,7 +35,7 @@ static void sortie(void);
 static void print_objects(void);
 static void keydown_func(int);
 
-static void collision_tests(void);
+static void collision_tests(double);
 static void parsing();
 static void display_bricks(float *, float *, float *);
 
@@ -55,7 +54,7 @@ typedef struct brick_t
   vec3 brick_coords;
   vec3 brick_size;
 } brick_t;
-static void print_brick_info(brick_t*);
+static void print_brick_info(brick_t *);
 
 /*!\brief le plateau */
 static unsigned int *_plat = NULL;
@@ -116,7 +115,7 @@ int main(int argc, char **argv)
  * utilisées dans ce code */
 void init(void)
 {
-  _bricks = list_init(sizeof(brick_t *));
+  _bricks = list_init(sizeof(brick_t));
   parsing();
   GLuint id;
   //ANCHOR couleurs des elements
@@ -135,6 +134,9 @@ void init(void)
     brick_t *une_brique = encours->data;
     une_brique->brick_surface = mkCube();
     une_brique->brick_surface->dcolor = r;
+    setTexId(une_brique->brick_surface, id = getTexFromBMP("images/tex.bmp"));
+    enableSurfaceOption(une_brique->brick_surface, SO_USE_LIGHTING);
+    enableSurfaceOption(une_brique->brick_surface, SO_USE_TEXTURE);
   }
 
   /* on change les couleurs de surfaces */
@@ -155,6 +157,7 @@ void init(void)
   enableSurfaceOption(_cube, SO_USE_LIGHTING);
   enableSurfaceOption(_paddle, SO_USE_LIGHTING);
   enableSurfaceOption(_sphere, SO_USE_LIGHTING);
+
   _plat = plateau(_pW, _pH);
   /* initialiser aléatoirement la vitesse de la balle (au pifomètre) */
   srand(time(NULL));
@@ -178,14 +181,14 @@ void simu(void)
     firstTime = 0;
     return;
   }
-  collision_tests();
+  collision_tests(dt);
 
   /* physique de base : mécanique newtonienne */
   _ball.x += _ballv.x * dt;
   _ball.y += _ballv.y * dt;
 }
 
-void collision_tests()
+void collision_tests(double dt)
 {
 
   if (_paddle_data.x - _paddle_data.w <= -_pW + 2.0f)
@@ -197,24 +200,25 @@ void collision_tests()
     _paddle_data.x -= _mouv_coord;
   }
 
-  if (_ball.x >= _paddle_data.x - _paddle_data.w && _ball.x <= _paddle_data.x + _paddle_data.w)
+  if (_ball.x- _ball.z >= _paddle_data.x - _paddle_data.w && _ball.x + _ball.z <= _paddle_data.x + _paddle_data.w)
   {
     if (_ball.y + _pH - 4.0f <= _paddle_data.y)
     {
       _ballv.x = -_ballv.x;
-      _ballv.y = _ballv.y;
+      _ballv.y = -_ballv.y;
     }
   }
-
-  for (cell_t *encours = _bricks->premier; encours != NULL; encours = encours->next)
+  unsigned long long i = 0;
+  for (cell_t *encours = _bricks->premier; encours != NULL; encours = encours->next, i++)
   {
     brick_t *br = encours->data;
-    if (br->brick_coords.x + br->brick_size.x >= _ball.x + _ball.z && br->brick_coords.x - br->brick_size.x <= _ball.x - _ball.z)
+    if (_ball.x + _ball.z >= br->brick_coords.x - br->brick_size.x && _ball.x - _ball.z <= br->brick_coords.x + br->brick_size.x)
     {
-      if (br->brick_coords.y + br->brick_size.y >= _ball.y + _ball.z && br->brick_coords.y - br->brick_size.y <= _ball.y - _ball.z)
+      if (_ball.y - _ball.z <= br->brick_coords.y && _ball.y + _ball.z >= br->brick_coords.y - br->brick_size.y)
       {
         _ballv.x = -_ballv.x;
-        _ballv.y = _ballv.y;
+        _ballv.y = -_ballv.y;
+        list_del_at(_bricks, i);
       }
     }
   }
@@ -229,28 +233,6 @@ void collision_tests()
   if (_ball.y <= lh || _ball.y >= lb)
   {
     _ballv.y = -_ballv.y;
-  }
-}
-
-static void keydown_func(int keypressed)
-{
-
-  switch (keypressed)
-  {
-  case GL4DK_LEFT:
-    _paddle_data.x += _mouv_coord;
-    break;
-  case GL4DK_RIGHT:
-    _paddle_data.x -= _mouv_coord;
-    break;
-  case GL4DK_q:
-    _paddle_data.x += _mouv_coord;
-    break;
-  case GL4DK_d:
-    _paddle_data.x -= _mouv_coord;
-
-  default:
-    break;
   }
 }
 
@@ -274,11 +256,13 @@ void draw(void)
   MIDENTITY(mvMat);
   /* on place la caméra en vue du dessus */
   lookAt(mvMat, 0, 30, -1, 0, 0, 0, 0, 1, 0);
+
   /* le quadrilatère est agrandi et couché */
   memcpy(nmv, mvMat, sizeof nmv); /* copie mvMat dans nmv */
   rotate(nmv, -90.0f, 1.0f, 0.0f, 0.0f);
   scale(nmv, _pW - 1, _pH - 1, 1.0f);
   transform_n_raster(_quad, nmv, projMat);
+
   /* le cube est relevé (+1 en y) et placé là où il y a des murs */
   for (i = -_pH / 2; i <= _pH / 2; ++i)
     for (j = -_pW / 2; j <= _pW / 2; ++j)
@@ -291,6 +275,7 @@ void draw(void)
       translate(nmv, 0.0f, 1.0f, 0.0f);
       transform_n_raster(_cube, nmv, projMat);
     }
+
   /* la balle est scalée, relevée (+1 en y) et placée à sa position (x, y) en (x, z) */
   memcpy(nmv, mvMat, sizeof nmv); /* copie mvMat dans nmv */
   translate(nmv, _paddle_data.x, _paddle_data.y, _paddle_data.z);
@@ -303,121 +288,23 @@ void draw(void)
   scale(nmv, _ball.z, _ball.z, _ball.z);
   transform_n_raster(_sphere, nmv, projMat);
 
-  display_bricks(mvMat, projMat, nmv);
-  /* déclarer qu'on a changé (en bas niveau) des pixels du screen  */
-  gl4dpScreenHasChanged();
-  /* fonction permettant de raffraîchir l'ensemble de la fenêtre*/
-  gl4dpUpdateScreen(NULL);
-}
-
-void parsing()
-{
-  int size_test = 0;
-  int next_champ = 0;
-  brick_t *br = malloc(sizeof(brick_t *));
-
-  char line_to_parse[1000];
-  char nb_to_parse[1000];
-  FILE *brick_file = fopen("bricks", "r");
-
-  assert(line_to_parse);
-  assert(nb_to_parse);
-
-  assert(brick_file);
-  fgets(line_to_parse, 1000, brick_file);
-  fgets(line_to_parse, 1000, brick_file);
-  fgets(line_to_parse, 1000, brick_file);
-
-  while (feof(brick_file) == 0)
-  {
-    fgets(line_to_parse, 1000, brick_file);
-    for (int i = 0, t = 0; line_to_parse[i] != '\0'; i++)
-    {
-      if (line_to_parse[i] == ';')
-      {
-        nb_to_parse[t] = '\0';
-        float nb = strtof(nb_to_parse,NULL);
-        t = 0;
-        if (size_test == 0)
-        {
-          switch (next_champ)
-          {
-          case 0:
-            br->brick_coords.x = nb;
-            next_champ++;
-            break;
-          case 1:
-            br->brick_coords.y = nb;
-            next_champ++;
-            break;
-          case 2:
-            br->brick_coords.z = nb;
-            size_test++;
-            next_champ = 0;
-            break;
-          default:
-            break;
-          }
-        }
-        else
-        {
-          switch (next_champ)
-          {
-          case 0:
-            br->brick_size.x = nb;
-            next_champ++;
-            break;
-          case 1:
-            br->brick_size.y = nb;
-            next_champ++;
-            break;
-          case 2:
-            br->brick_size.z = nb;
-            size_test = 0;
-            next_champ = 0;
-            break;
-          default:
-            break;
-          }
-        }
-      }
-
-      else if ((line_to_parse[i] >= '0' && line_to_parse[i] <= '9') || line_to_parse[i] == '.')
-      {
-        nb_to_parse[t] = line_to_parse[i];
-        t++;
-      }
-    }
-    print_brick_info(br);
-    list_push(_bricks, br);
-    list_printf(_bricks,(void*)print_brick_info);
-  }
-  free(br);
-}
-
-static void display_bricks(float mvMat[16], float projMat[16], float nmv[16])
-{
   for (cell_t *encours = _bricks->premier; encours != NULL; encours = encours->next)
   {
     brick_t *brick = encours->data;
     vec3 brick_coords = brick->brick_coords;
     vec3 brick_size = brick->brick_size;
+
     memcpy(nmv, mvMat, sizeof nmv);
     translate(nmv, brick_coords.x, brick_coords.y, brick_coords.z);
     scale(nmv, brick_size.x, brick_size.y, brick_size.z);
-    transform_n_raster(_sphere, nmv, projMat);
+    transform_n_raster(brick->brick_surface, nmv, projMat);
+    translate(nmv, brick_coords.x, brick_coords.y, brick_coords.z);
   }
-}
 
-static void print_brick_info(brick_t* brick)
-{
-    printf("BrickInfo:\nCoord:\nX:%f,Y:%f,Z:%f\nSize:\nX:%f,Y:%f,Z:%f\n",
-           brick->brick_coords.x,
-           brick->brick_coords.y,
-           brick->brick_coords.z,
-           brick->brick_size.x,
-           brick->brick_size.y,
-           brick->brick_size.z);
+  /* déclarer qu'on a changé (en bas niveau) des pixels du screen  */
+  gl4dpScreenHasChanged();
+  /* fonction permettant de raffraîchir l'ensemble de la fenêtre*/
+  gl4dpUpdateScreen(NULL);
 }
 
 /*!\brief à appeler à la sortie du programme. */
@@ -455,4 +342,129 @@ void print_objects()
 {
   printf("Ball Coords X:%f,Y:%f,Z:%f\n", _ball.x, _ball.y, _ball.z);
   printf("Paddle Coords X:%f,Y:%f,Z:%f\n", _paddle_data.x, _paddle_data.y, _paddle_data.z);
+}
+
+void parsing()
+{
+  int size_test = 0;
+  int next_champ = 0;
+  brick_t *br = malloc(sizeof(brick_t));
+
+  char line_to_parse[1000];
+  char nb_to_parse[1000];
+  FILE *brick_file = fopen("bricks", "r");
+
+  assert(line_to_parse);
+  assert(nb_to_parse);
+
+  assert(brick_file);
+  fgets(line_to_parse, 1000, brick_file);
+  fgets(line_to_parse, 1000, brick_file);
+  fgets(line_to_parse, 1000, brick_file);
+
+  while (feof(brick_file) == 0)
+  {
+    fgets(line_to_parse, 1000, brick_file);
+    if (line_to_parse != "")
+    {
+      for (int i = 0, t = 0; line_to_parse[i] != '\0'; i++)
+      {
+        if (line_to_parse[i] == ';')
+        {
+          nb_to_parse[t] = '\0';
+          float nb = strtof(nb_to_parse, NULL);
+          t = 0;
+          if (size_test == 0)
+          {
+            switch (next_champ)
+            {
+            case 0:
+              br->brick_coords.x = nb;
+              next_champ++;
+              break;
+            case 1:
+              br->brick_coords.y = nb;
+              next_champ++;
+              break;
+            case 2:
+              br->brick_coords.z = nb;
+              size_test++;
+              next_champ = 0;
+              break;
+            default:
+              break;
+            }
+          }
+          else
+          {
+            switch (next_champ)
+            {
+            case 0:
+              br->brick_size.x = nb;
+              next_champ++;
+              break;
+            case 1:
+              br->brick_size.y = nb;
+              next_champ++;
+              break;
+            case 2:
+              br->brick_size.z = nb;
+              size_test = 0;
+              next_champ = 0;
+              break;
+            default:
+              break;
+            }
+          }
+        }
+
+        else if ((line_to_parse[i] >= '0' && line_to_parse[i] <= '9') || line_to_parse[i] == '.' || line_to_parse[i] == '-')
+        {
+          nb_to_parse[t] = line_to_parse[i];
+          t++;
+        }
+      }
+      list_push(_bricks, br);
+    }
+  }
+  //! Patch briocalage
+  list_del_at(_bricks, _bricks->list_size - 1);
+  //! Patch briocalage
+
+  list_printf(_bricks, print_brick_info);
+  printf("list_size: %lld\n", _bricks->list_size);
+  free(br);
+}
+
+static void print_brick_info(brick_t *brick)
+{
+  printf("BrickInfo:\nCoord:\nX:%f,Y:%f,Z:%f\nSize:\nX:%f,Y:%f,Z:%f\n",
+         brick->brick_coords.x,
+         brick->brick_coords.y,
+         brick->brick_coords.z,
+         brick->brick_size.x,
+         brick->brick_size.y,
+         brick->brick_size.z);
+}
+
+static void keydown_func(int keypressed)
+{
+
+  switch (keypressed)
+  {
+  case GL4DK_LEFT:
+    _paddle_data.x += _mouv_coord;
+    break;
+  case GL4DK_RIGHT:
+    _paddle_data.x -= _mouv_coord;
+    break;
+  case GL4DK_q:
+    _paddle_data.x += _mouv_coord;
+    break;
+  case GL4DK_d:
+    _paddle_data.x -= _mouv_coord;
+
+  default:
+    break;
+  }
 }

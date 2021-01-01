@@ -106,7 +106,7 @@ void list_del_at(liste_t *l, unsigned long long n)
     if (l->list_size <= 0)
     {
         printf("Erreur votre liste ne contient pas d'element");
-        exit(-1);
+        return;
     }
 
     if (n == 0)

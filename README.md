@@ -6,8 +6,8 @@ Un petit casse brique fait maison
 - [X] Paddle movement
 - [X] Paddle Collision 
 - [ ] Bricks Spawning
-- [ ] Bricks Collision
-- [ ] Bricks Loading from files
+- [X] Bricks Collision
+- [X] Bricks Loading from files
 - [ ] Scores 
 - [ ] Special Objects
 - [ ] Light Effects
