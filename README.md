@@ -5,13 +5,16 @@ Un petit casse brique fait maison
 
 - [X] Paddle movement
 - [X] Paddle Collision 
-- [ ] Bricks Spawning
+- [X] Bricks Spawning
 - [X] Bricks Collision
-- [X] Bricks Loading from files
-- [ ] Scores 
+- [X] LvL Loading from files
+- [X] LvL Rand-Gen Loading 
 - [ ] Special Objects
-- [ ] Light Effects
+
 
 ## Si possible dans les temps
 - [ ] Bricks Fancy movements
 - [ ] Changer d'angle de vue
+- [ ] Improve Overall Visual
+- [ ] Improve Overall Collision
+- [ ] Light Effects

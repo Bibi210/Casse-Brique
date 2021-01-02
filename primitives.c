@@ -276,10 +276,14 @@ inline void drawHLine(surface_t * s, vertex_t * vG, vertex_t * vD) {
 /*!\brief aucune couleur n'est inscrite */
 inline void shading_none(surface_t * s, GLuint * pcolor, vertex_t * v) {
   //vide pour l'instant, à prévoir le z-buffer
+  s = s;
+  pcolor = pcolor;
+  v = v;
 }
 
 /*!\brief la couleur du pixel est tirée uniquement de la texture */
 inline void shading_only_tex(surface_t * s, GLuint * pcolor, vertex_t * v) {
+  s=s;
   int xt, yt, ct;
   GLubyte r, g, b, a;
   xt = (int)(v->texCoord.x * (_texW - EPSILON));
@@ -305,6 +309,7 @@ inline void shading_only_tex(surface_t * s, GLuint * pcolor, vertex_t * v) {
 
 /*!\brief la couleur du pixel est tirée de la couleur interpolée */
 inline void shading_only_color_CM(surface_t * s, GLuint * pcolor, vertex_t * v) {
+    s=s;
   GLubyte r, g, b, a;
   r = (GLubyte)(v->li * v->icolor.x * (255 + EPSILON));
   g = (GLubyte)(v->li * v->icolor.y * (255 + EPSILON));
@@ -327,6 +332,7 @@ inline void shading_only_color(surface_t * s, GLuint * pcolor, vertex_t * v) {
 /*!\brief la couleur du pixel est le produit de la couleur interpolée
  * et de la texture */
 inline void shading_all_CM(surface_t * s, GLuint * pcolor, vertex_t * v) {
+    s=s;
   GLubyte r, g, b, a;
   int xt, yt, ct;
   xt = (int)(v->texCoord.x * (_texW - EPSILON));

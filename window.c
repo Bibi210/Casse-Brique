@@ -35,10 +35,15 @@ static void sortie(void);
 static void print_objects(void);
 static void keydown_func(int);
 
-static void collision_tests(double);
+static void collision_tests();
 static void parsing();
-static void display_bricks(float *, float *, float *);
+static void next_lvl();
+static void reset_ball();
+static void reset_pad();
+static int random_sign(int x);
+static void gen_lvl();
 
+static unsigned int _nb_lvl = 0;
 /*!\brief une surface représentant un quadrilatère */
 static surface_t *_quad = NULL;
 /*!\brief une surface représentant un cube */
@@ -48,13 +53,6 @@ static surface_t *_paddle = NULL;
 /*!\brief une surface représentant une sphère (pour la balle) */
 static surface_t *_sphere = NULL;
 static liste_t *_bricks = NULL;
-typedef struct brick_t
-{
-  surface_t *brick_surface;
-  vec3 brick_coords;
-  vec3 brick_size;
-} brick_t;
-static void print_brick_info(brick_t *);
 
 /*!\brief le plateau */
 static unsigned int *_plat = NULL;
@@ -66,17 +64,26 @@ static const int _pH = 21;
 static const int _wW = 320;
 /*!\brief la hauteur de la fenêtre */
 static const int _wH = 512;
-//!  translate Z du paddle paddle
 /*!\brief ma balle est codée sur un vec3, x est x, y est z et z est
  * son rayon */
 static vec3 _ball = {0, -_pH + 5, 0.84f};
-static vec4 _paddle_data = {0, 1.0f, -_pH + 3, 3.1f};
-float _mouv_coord = 0.80f;
-
 /*!\brief ma balle a une vitesse, x est vx, y est vz */
 static vec2 _ballv = {0, 0};
+
 /*!\brief une accélération, exemple la gravité */
 static vec2 _g = {0, -9.8f * 10.0f /* facteur réel/virtuel, dépend de la taille de l'écran */};
+
+typedef struct brick_t
+{
+  surface_t *brick_surface;
+  vec3 brick_coords;
+  vec3 brick_size;
+} brick_t;
+static void print_brick_info(brick_t *);
+/*!\brief Données du pad sa taille et ses coordonnée */
+static vec4 _paddle_data = {0, 1.0f, -_pH + 3, 3.1f};
+/*!\brief Marge de mouvement du pad */
+static float _mouv_coord = 0.80f;
 
 /*!\brief paramètre l'application et lance la boucle infinie. */
 int main(int argc, char **argv)
@@ -116,7 +123,6 @@ int main(int argc, char **argv)
 void init(void)
 {
   _bricks = list_init(sizeof(brick_t));
-  parsing();
   GLuint id;
   //ANCHOR couleurs des elements
   vec4 r = {1.0f, 0.0f, 0.0f, 1}, g = {0.0f, 1.0f, 0.0f, 1}, b = {1.0f, 1.0f, 0.7f, 1};
@@ -129,16 +135,6 @@ void init(void)
   _paddle = mkCube(); /* ça fait 2x6 triangles      */
   // ANCHOR balle
   _sphere = mkSphere(12, 4); /* ça fait 2x12x5 triangles   */
-  for (cell_t *encours = _bricks->premier; encours != NULL; encours = encours->next)
-  {
-    brick_t *une_brique = encours->data;
-    une_brique->brick_surface = mkCube();
-    une_brique->brick_surface->dcolor = r;
-    setTexId(une_brique->brick_surface, id = getTexFromBMP("images/tex.bmp"));
-    enableSurfaceOption(une_brique->brick_surface, SO_USE_LIGHTING);
-    enableSurfaceOption(une_brique->brick_surface, SO_USE_TEXTURE);
-  }
-
   /* on change les couleurs de surfaces */
   _sphere->dcolor = r;
   _quad->dcolor = g;
@@ -160,9 +156,7 @@ void init(void)
 
   _plat = plateau(_pW, _pH);
   /* initialiser aléatoirement la vitesse de la balle (au pifomètre) */
-  srand(time(NULL));
-  _ballv.x = ((2.0 * (rand() / (RAND_MAX + 1.0))) - 1.0) * _pW * 2.0;
-  _ballv.y = 1.5 * _pH + (rand() / (RAND_MAX + 1.0)) * _pH;
+
   /* mettre en place la fonction à appeler en cas de sortie */
   atexit(sortie);
 }
@@ -181,14 +175,14 @@ void simu(void)
     firstTime = 0;
     return;
   }
-  collision_tests(dt);
+  collision_tests();
 
   /* physique de base : mécanique newtonienne */
   _ball.x += _ballv.x * dt;
   _ball.y += _ballv.y * dt;
 }
 
-void collision_tests(double dt)
+void collision_tests()
 {
 
   if (_paddle_data.x - _paddle_data.w <= -_pW + 2.0f)
@@ -200,26 +194,12 @@ void collision_tests(double dt)
     _paddle_data.x -= _mouv_coord;
   }
 
-  if (_ball.x- _ball.z >= _paddle_data.x - _paddle_data.w && _ball.x + _ball.z <= _paddle_data.x + _paddle_data.w)
+  if (_ball.x - _ball.z >= _paddle_data.x - _paddle_data.w && _ball.x + _ball.z <= _paddle_data.x + _paddle_data.w)
   {
     if (_ball.y + _pH - 4.0f <= _paddle_data.y)
     {
       _ballv.x = -_ballv.x;
       _ballv.y = -_ballv.y;
-    }
-  }
-  unsigned long long i = 0;
-  for (cell_t *encours = _bricks->premier; encours != NULL; encours = encours->next, i++)
-  {
-    brick_t *br = encours->data;
-    if (_ball.x + _ball.z >= br->brick_coords.x - br->brick_size.x && _ball.x - _ball.z <= br->brick_coords.x + br->brick_size.x)
-    {
-      if (_ball.y - _ball.z <= br->brick_coords.y && _ball.y + _ball.z >= br->brick_coords.y - br->brick_size.y)
-      {
-        _ballv.x = -_ballv.x;
-        _ballv.y = -_ballv.y;
-        list_del_at(_bricks, i);
-      }
     }
   }
 
@@ -234,11 +214,33 @@ void collision_tests(double dt)
   {
     _ballv.y = -_ballv.y;
   }
+
+  unsigned long long i = 0;
+  for (cell_t *encours = _bricks->premier; encours != NULL; encours = encours->next, i++)
+  {
+    brick_t *br = encours->data;
+    if (_ball.x + _ball.z >= br->brick_coords.x - br->brick_size.x && _ball.x - _ball.z <= br->brick_coords.x + br->brick_size.x)
+    {
+      if (_ball.y - _ball.z <= br->brick_coords.y && _ball.y + _ball.z >= br->brick_coords.y - br->brick_size.y)
+      {
+        _ballv.x = -_ballv.x;
+        _ballv.y = -_ballv.y;
+        freeSurface(br->brick_surface);
+        list_del_at(_bricks, i);
+
+        return;
+      }
+    }
+  }
 }
 
 /*!\brief la fonction appelée à chaque display. */
 void draw(void)
 {
+  if (_bricks->list_size == 0)
+  {
+    next_lvl();
+  }
   int i, j;
   float mvMat[16], projMat[16], nmv[16];
   /* effacer l'écran et le buffer de profondeur */
@@ -295,10 +297,11 @@ void draw(void)
     vec3 brick_size = brick->brick_size;
 
     memcpy(nmv, mvMat, sizeof nmv);
-    translate(nmv, brick_coords.x, brick_coords.y, brick_coords.z);
-    scale(nmv, brick_size.x, brick_size.y, brick_size.z);
+    //! Patch briocalage Je sais pas pourquoi je dois echanger z et y
+    translate(nmv, brick_coords.x, brick_coords.z, brick_coords.y);
+    scale(nmv, brick_size.x, brick_size.z, brick_size.y);
+    //! Patch briocalage Je sais pas pourquoi je dois echanger z et y
     transform_n_raster(brick->brick_surface, nmv, projMat);
-    translate(nmv, brick_coords.x, brick_coords.y, brick_coords.z);
   }
 
   /* déclarer qu'on a changé (en bas niveau) des pixels du screen  */
@@ -349,88 +352,87 @@ void parsing()
   int size_test = 0;
   int next_champ = 0;
   brick_t *br = malloc(sizeof(brick_t));
+  char filename[100];
+  sprintf(filename, "brick_levels/bricks_lvl%u", _nb_lvl);
 
   char line_to_parse[1000];
   char nb_to_parse[1000];
-  FILE *brick_file = fopen("bricks", "r");
-
-  assert(line_to_parse);
-  assert(nb_to_parse);
+  FILE *brick_file = fopen(filename, "r");
 
   assert(brick_file);
+  assert(br);
+
   fgets(line_to_parse, 1000, brick_file);
   fgets(line_to_parse, 1000, brick_file);
 
   while (feof(brick_file) == 0)
   {
     fgets(line_to_parse, 1000, brick_file);
-    if (line_to_parse != "")
+    for (int i = 0, t = 0; line_to_parse[i] != '\0'; i++)
     {
-      for (int i = 0, t = 0; line_to_parse[i] != '\0'; i++)
+      if (line_to_parse[i] == ';')
       {
-        if (line_to_parse[i] == ';')
+        nb_to_parse[t] = '\0';
+        float nb = strtof(nb_to_parse, NULL);
+        t = 0;
+        if (size_test == 0)
         {
-          nb_to_parse[t] = '\0';
-          float nb = strtof(nb_to_parse, NULL);
-          t = 0;
-          if (size_test == 0)
+          switch (next_champ)
           {
-            switch (next_champ)
-            {
-            case 0:
-              br->brick_coords.x = nb;
-              next_champ++;
-              break;
-            case 1:
-              br->brick_coords.y = nb;
-              next_champ++;
-              break;
-            case 2:
-              br->brick_coords.z = nb;
-              size_test++;
-              next_champ = 0;
-              break;
-            default:
-              break;
-            }
-          }
-          else
-          {
-            switch (next_champ)
-            {
-            case 0:
-              br->brick_size.x = nb;
-              next_champ++;
-              break;
-            case 1:
-              br->brick_size.y = nb;
-              next_champ++;
-              break;
-            case 2:
-              br->brick_size.z = nb;
-              size_test = 0;
-              next_champ = 0;
-              break;
-            default:
-              break;
-            }
+          case 0:
+            br->brick_coords.x = nb;
+            next_champ++;
+            break;
+          case 1:
+            br->brick_coords.y = nb;
+            next_champ++;
+            break;
+          case 2:
+            br->brick_coords.z = nb;
+            size_test++;
+            next_champ = 0;
+            break;
+          default:
+            break;
           }
         }
-
-        else if ((line_to_parse[i] >= '0' && line_to_parse[i] <= '9') || line_to_parse[i] == '.' || line_to_parse[i] == '-')
+        else
         {
-          nb_to_parse[t] = line_to_parse[i];
-          t++;
+          switch (next_champ)
+          {
+          case 0:
+            br->brick_size.x = nb;
+            next_champ++;
+            break;
+          case 1:
+            br->brick_size.y = nb;
+            next_champ++;
+            break;
+          case 2:
+            br->brick_size.z = nb;
+            size_test = 0;
+            next_champ = 0;
+            break;
+          default:
+            break;
+          }
         }
       }
-      list_push(_bricks, br);
+
+      else if ((line_to_parse[i] >= '0' && line_to_parse[i] <= '9') || line_to_parse[i] == '.' || line_to_parse[i] == '-')
+      {
+        nb_to_parse[t] = line_to_parse[i];
+        t++;
+      }
     }
+    list_push(_bricks, br);
   }
+
   //! Patch briocalage
   list_del_at(_bricks, _bricks->list_size - 1);
   //! Patch briocalage
 
-  list_printf(_bricks, print_brick_info);
+  list_printf(_bricks, (void *)print_brick_info);
   printf("list_size: %lld\n", _bricks->list_size);
   free(br);
 }
@@ -462,8 +464,83 @@ static void keydown_func(int keypressed)
     break;
   case GL4DK_d:
     _paddle_data.x -= _mouv_coord;
-
+    break;
+  case GL4DK_SPACE:
+    if (_ballv.x == 0 && _ballv.y == 0)
+    {
+      srand(time(NULL));
+      _ballv.x = ((2.0 * (rand() / (RAND_MAX + 1.0))) - 1.0) * _pW * 2.0;
+      _ballv.y = 1.5 * _pH + (rand() / (RAND_MAX + 1.0)) * _pH;
+    }
+    break;
   default:
     break;
   }
+}
+
+static void next_lvl()
+{
+  reset_ball();
+  reset_pad();
+  int id;
+  vec4 r = {1.0f, 0.0f, 0.0f, 1};
+  _nb_lvl++;
+  if (_nb_lvl <= 3)
+  {
+    parsing();
+  }
+  else
+  {
+    gen_lvl();
+  }
+
+  for (cell_t *encours = _bricks->premier; encours != NULL; encours = encours->next)
+  {
+    brick_t *une_brique = encours->data;
+    une_brique->brick_surface = mkCube();
+    une_brique->brick_surface->dcolor = r;
+    setTexId(une_brique->brick_surface, id = getTexFromBMP("images/tijolinho.bmp"));
+    enableSurfaceOption(une_brique->brick_surface, SO_USE_LIGHTING);
+    enableSurfaceOption(une_brique->brick_surface, SO_USE_TEXTURE);
+  }
+}
+
+static void reset_ball()
+{
+  _ball.x = 0;
+  _ball.y = -_pH + 5;
+  _ball.z = 0.84f;
+  _ballv.x = 0;
+  _ballv.y = 0;
+}
+
+static void reset_pad()
+{
+  _paddle_data.x = 0;
+  _paddle_data.y = 1;
+  _paddle_data.z = -_pH + 3;
+  _paddle_data.w = 3.1f;
+}
+
+static void gen_lvl()
+{
+
+  for (unsigned int nb_brick = _nb_lvl * 2; nb_brick > 0; nb_brick--)
+  {
+    brick_t *une_brique = malloc(sizeof(brick_t));
+    une_brique->brick_coords.x = random_sign(rand() % _pW - 4) + 1;
+    une_brique->brick_coords.y = random_sign(rand() % _pH - 4) + 1;
+    une_brique->brick_coords.z = 1;
+
+    une_brique->brick_size.x = (rand() % 3) + 1;
+    une_brique->brick_size.y = (rand() % 2) + 1;
+    une_brique->brick_size.z = 1;
+    list_push(_bricks, une_brique);
+  }
+  list_printf(_bricks,(void*)print_brick_info);
+}
+
+static int random_sign(int x)
+{
+  return rand() <= RAND_MAX / 2 ? x : -x;
 }
