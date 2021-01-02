@@ -1,6 +1,11 @@
 # Brick Destroyer
 Un petit casse brique fait maison
 
+## Installer le jeu
+`git clone https://code.up8.edu/BrahimaDibassi/brick-destroyer.git`
+`make`
+`brick_destroyer`
+
 ## Todo List
 
 - [X] Paddle movement
