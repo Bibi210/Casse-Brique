@@ -12,8 +12,9 @@
 #include <time.h>
 
 //TODO Switch _bricks from list to vec
-//TODO Improve collision
-
+//TODO If ball its wall decalé pour pas stuck
+//TODO Prendre chaque partie du pad et renvoyer differament
+//TODO Modify lookAt(mvMat, _xcam,30,-10,0,-10, _zcam,0,1,0)
 /* inclusion des entêtes de fonctions de gestion de primitives simples
  * de dessin. La lettre p signifie aussi bien primitive que
  * pédagogique. */
@@ -418,7 +419,6 @@ void parsing()
           }
         }
       }
-
       else if ((line_to_parse[i] >= '0' && line_to_parse[i] <= '9') || line_to_parse[i] == '.' || line_to_parse[i] == '-')
       {
         nb_to_parse[t] = line_to_parse[i];
