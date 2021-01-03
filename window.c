@@ -11,10 +11,15 @@
 #include <assert.h>
 #include <time.h>
 
+//TODO Death on ground
 //TODO Switch _bricks from list to vec
 //TODO If ball its wall decalé pour pas stuck
 //TODO Prendre chaque partie du pad et renvoyer differament
 //TODO Modify lookAt(mvMat, _xcam,30,-10,0,-10, _zcam,0,1,0)
+//TODO Death On Ground
+//TODO Print Txt
+//TODO Special Object
+
 /* inclusion des entêtes de fonctions de gestion de primitives simples
  * de dessin. La lettre p signifie aussi bien primitive que
  * pédagogique. */

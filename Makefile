@@ -16,13 +16,13 @@ CFLAGS = -Wall -O3 -Wextra -fanalyzer -g
 CPPFLAGS = -I.
 LDFLAGS = -lm
 # définition des fichiers et dossiers
-PACKNAME = sc_00_07
+PACKNAME = casse_brique
 PROGNAME = brick_destroyer
 VERSION = 0.3
 distdir = $(PACKNAME)_$(PROGNAME)-$(VERSION)
-HEADERS = moteur.h
+HEADERS = moteur.h liste.h
 SOURCES = window.c primitives.c transformations.c scene.c geometry.c plateau.c liste.c
-MSVCSRC = $(patsubst %,<ClCompile Include=\"%\\\" \\/>,$(SOURCES))
+
 OBJ = $(SOURCES:.c=.o)
 # Traitements automatiques pour ajout de chemins et options (ne pas modifier)
 ifneq (,$(shell ls -d /usr/local/include 2>/dev/null | tail -n 1))
