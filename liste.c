@@ -2,7 +2,7 @@
 
 // Alloc on heap a new list.
 // It's empty at first.
-extern liste_t *list_init(size_t data_size)
+extern liste_t *list_init(size_t data_size,void free_func(void*))
 {
     assert(data_size > 0);
     liste_t *lst = malloc(sizeof(liste_t));
@@ -11,6 +11,7 @@ extern liste_t *list_init(size_t data_size)
     lst->premier = NULL;
     lst->data_size = data_size;
     lst->list_size = 0;
+    lst->free_func = free_func;
     return lst;
 }
 
@@ -111,7 +112,7 @@ void list_del_at(liste_t *l, unsigned long long n)
 
     if (n == 0)
     {
-        free(l->premier->data);
+        l->free_func(l->premier->data);
         l->premier = l->premier->next;
     }
     else
@@ -123,7 +124,8 @@ void list_del_at(liste_t *l, unsigned long long n)
             n--;
         }
         prec->next = current->next;
-        free(current->data);
+        l->free_func(current->data);
+        free(current);
     }
     l->list_size--;
 }
@@ -134,5 +136,6 @@ extern void list_free(liste_t *l)
     {
         list_del_at(l, l->list_size - 1);
     }
+    free(l->premier);
     free(l);
 }

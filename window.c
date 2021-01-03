@@ -11,14 +11,10 @@
 #include <assert.h>
 #include <time.h>
 
-//TODO Death on ground
-//TODO Switch _bricks from list to vec
-//TODO If ball its wall decalé pour pas stuck
-//TODO Prendre chaque partie du pad et renvoyer differament
-//TODO Modify lookAt(mvMat, _xcam,30,-10,0,-10, _zcam,0,1,0)
-//TODO Death On Ground
+
 //TODO Print Txt
 //TODO Special Object
+//TODO Modify lookAt(mvMat, _xcam,30,-10,0,-10, _zcam,0,1,0)
 
 /* inclusion des entêtes de fonctions de gestion de primitives simples
  * de dessin. La lettre p signifie aussi bien primitive que
@@ -38,16 +34,8 @@ static void init(void);
 static void simu(void);
 static void draw(void);
 static void sortie(void);
-static void print_objects(void);
 static void keydown_func(int);
 
-static void collision_tests();
-static void parsing();
-static void next_lvl();
-static void reset_ball();
-static void reset_pad();
-static int random_sign(int x);
-static void gen_lvl();
 
 static unsigned int _nb_lvl = 0;
 /*!\brief une surface représentant un quadrilatère */
@@ -86,8 +74,18 @@ typedef struct brick_t
   vec3 brick_size;
 } brick_t;
 static void print_brick_info(brick_t *);
+static void collision_tests();
+static void parsing();
+static void next_lvl();
+static void reset_ball();
+static void reset_pad();
+static int random_sign(int x);
+static void gen_lvl();
+static void brick_free(brick_t*);
+static void print_objects(void);
+
 /*!\brief Données du pad sa taille et ses coordonnée */
-static vec4 _paddle_data = {0, 1.0f, -_pH + 3, 3.1f};
+static vec4 _paddle_data = {0, -_pH + 3, 1, 3.1f};
 /*!\brief Marge de mouvement du pad */
 static float _mouv_coord = 0.80f;
 
@@ -128,7 +126,7 @@ int main(int argc, char **argv)
  * utilisées dans ce code */
 void init(void)
 {
-  _bricks = list_init(sizeof(brick_t));
+  _bricks = list_init(sizeof(brick_t),(void*)brick_free);
   GLuint id;
   //ANCHOR couleurs des elements
   vec4 r = {1.0f, 0.0f, 0.0f, 1}, g = {0.0f, 1.0f, 0.0f, 1}, b = {1.0f, 1.0f, 0.7f, 1};
@@ -190,7 +188,6 @@ void simu(void)
 
 void collision_tests()
 {
-
   if (_paddle_data.x - _paddle_data.w <= -_pW + 2.0f)
   {
     _paddle_data.x += _mouv_coord;
@@ -200,25 +197,54 @@ void collision_tests()
     _paddle_data.x -= _mouv_coord;
   }
 
-  if (_ball.x - _ball.z >= _paddle_data.x - _paddle_data.w && _ball.x + _ball.z <= _paddle_data.x + _paddle_data.w)
+  if (_ball.x - _ball.z >= _paddle_data.x - (_paddle_data.w + 1) && _ball.x + _ball.z <= _paddle_data.x + (_paddle_data.w + 1))
   {
-    if (_ball.y + _pH - 4.0f <= _paddle_data.y)
+    if (_ball.y - _ball.z <= _paddle_data.y)
     {
-      _ballv.x = -_ballv.x;
+      print_objects();
+      _ball.y += 0.15f;
       _ballv.y = -_ballv.y;
+      if (_ball.x - _ball.z >= _paddle_data.x - 1.5 && _ball.x + _ball.z <= _paddle_data.x + 1.5){
+        _ballv.x = 0;
+      }
+      else if (_ball.x - _ball.z >= _paddle_data.x - (_paddle_data.w + 1)/3){
+          _ballv.x = 12;
+      }
+      else if (_ball.x + _ball.z <= _paddle_data.x + (_paddle_data.w + 1)/3){
+          _ballv.x = -12;
+        
+      }
+      
     }
   }
 
-  //TODO find how to improve this
   float lg = -_pW + 2.0f + _ball.z; /* limite gauche */
   float ld = _pW - 2.0f - _ball.z;  /* limite droite */
   float lb = _pH - 2.0f - _ball.z;  /* limite basse */
   float lh = -_pH + 2.0f + _ball.z; /* limite haute */
-  if (_ball.x <= lg || _ball.x >= ld)
+  if (_ball.x <= lg)
+  {
+     _ball.x += 0.15f;
     _ballv.x = -_ballv.x;
-  if (_ball.y <= lh || _ball.y >= lb)
+  }
+  else if (_ball.x >= ld)
+  {
+    _ball.x -= 0.15f;
+    _ballv.x = -_ballv.x;
+  }
+  else if (_ball.y <= lh)
   {
     _ballv.y = -_ballv.y;
+    _ball.x -= 0.15f;
+  }
+   else if (_ball.y < _paddle_data.y){
+     _nb_lvl = 0;
+     list_free(_bricks);
+    _bricks = list_init(sizeof(brick_t),(void*)brick_free);
+  }
+  else if (_ball.y >= lb){
+     _ballv.y = -_ballv.y;
+     _ball.x += 0.15f;
   }
 
   unsigned long long i = 0;
@@ -231,9 +257,8 @@ void collision_tests()
       {
         _ballv.x = -_ballv.x;
         _ballv.y = -_ballv.y;
-        freeSurface(br->brick_surface);
-        list_del_at(_bricks, i);
 
+        list_del_at(_bricks, i);
         return;
       }
     }
@@ -286,7 +311,7 @@ void draw(void)
 
   /* la balle est scalée, relevée (+1 en y) et placée à sa position (x, y) en (x, z) */
   memcpy(nmv, mvMat, sizeof nmv); /* copie mvMat dans nmv */
-  translate(nmv, _paddle_data.x, _paddle_data.y, _paddle_data.z);
+  translate(nmv, _paddle_data.x, _paddle_data.z, _paddle_data.y);
   scale(nmv, _paddle_data.w, 1.0f, 1.0f);
   transform_n_raster(_paddle, nmv, projMat);
 
@@ -340,6 +365,7 @@ void sortie(void)
     freeSurface(_sphere);
     _sphere = NULL;
   }
+  list_free(_bricks);
   /* on libère le plateau */
   free(_plat);
   /* libère tous les objets produits par GL4Dummies, ici
@@ -350,6 +376,7 @@ void sortie(void)
 void print_objects()
 {
   printf("Ball Coords X:%f,Y:%f,Z:%f\n", _ball.x, _ball.y, _ball.z);
+  printf("Ball Vitesse X:%f,Y:%f", _ballv.x, _ballv.y);
   printf("Paddle Coords X:%f,Y:%f,Z:%f\n", _paddle_data.x, _paddle_data.y, _paddle_data.z);
 }
 
@@ -437,7 +464,6 @@ void parsing()
   list_del_at(_bricks, _bricks->list_size - 1);
   //! Patch briocalage
 
-  list_printf(_bricks, (void *)print_brick_info);
   printf("list_size: %lld\n", _bricks->list_size);
   free(br);
 }
@@ -471,11 +497,10 @@ static void keydown_func(int keypressed)
     _paddle_data.x -= _mouv_coord;
     break;
   case GL4DK_SPACE:
-    if (_ballv.x == 0 && _ballv.y == 0)
+    if (_ballv.y == 0)
     {
-      srand(time(NULL));
-      _ballv.x = ((2.0 * (rand() / (RAND_MAX + 1.0))) - 1.0) * _pW * 2.0;
-      _ballv.y = 1.5 * _pH + (rand() / (RAND_MAX + 1.0)) * _pH;
+      _ballv.x = 0;
+      _ballv.y = _nb_lvl+28;
     }
     break;
   default:
@@ -487,7 +512,6 @@ static void next_lvl()
 {
   reset_ball();
   reset_pad();
-  int id;
   vec4 r = {1.0f, 0.0f, 0.0f, 1};
   _nb_lvl++;
   if (_nb_lvl <= 3)
@@ -503,8 +527,8 @@ static void next_lvl()
   {
     brick_t *une_brique = encours->data;
     une_brique->brick_surface = mkCube();
+    setTexId(une_brique->brick_surface, getTexFromBMP("images/tijolinho.bmp"));
     une_brique->brick_surface->dcolor = r;
-    setTexId(une_brique->brick_surface, id = getTexFromBMP("images/tijolinho.bmp"));
     enableSurfaceOption(une_brique->brick_surface, SO_USE_LIGHTING);
     enableSurfaceOption(une_brique->brick_surface, SO_USE_TEXTURE);
   }
@@ -522,30 +546,42 @@ static void reset_ball()
 static void reset_pad()
 {
   _paddle_data.x = 0;
-  _paddle_data.y = 1;
-  _paddle_data.z = -_pH + 3;
+  _paddle_data.y = -_pH + 3;
+  _paddle_data.z = 1;
   _paddle_data.w = 3.1f;
 }
 
 static void gen_lvl()
 {
-
+  brick_t *une_brique = malloc(sizeof(brick_t));
   for (unsigned int nb_brick = _nb_lvl * 2; nb_brick > 0; nb_brick--)
   {
-    brick_t *une_brique = malloc(sizeof(brick_t));
-    une_brique->brick_coords.x = random_sign(rand() % _pW - 4) + 1;
+    une_brique->brick_coords.x = random_sign(rand() % _pW - 6) + 1;
     une_brique->brick_coords.y = random_sign(rand() % _pH - 4) + 1;
+    while (une_brique->brick_coords.y <= -_pH+ 10)
+    {
+      une_brique->brick_coords.y++;
+    }
+    
     une_brique->brick_coords.z = 1;
 
-    une_brique->brick_size.x = (rand() % 3) + 1;
+    une_brique->brick_size.x = (rand() % 2) + 1;
     une_brique->brick_size.y = (rand() % 2) + 1;
-    une_brique->brick_size.z = 1;
+    une_brique->brick_size.z = (rand() % 3) + 1;
     list_push(_bricks, une_brique);
   }
-  list_printf(_bricks,(void*)print_brick_info);
+  list_printf(_bricks, (void *)print_brick_info);
+  free(une_brique);
 }
 
 static int random_sign(int x)
 {
   return rand() <= RAND_MAX / 2 ? x : -x;
+}
+
+static void brick_free(brick_t *brick){
+  if (brick->brick_surface){
+    freeSurface(brick->brick_surface);
+  }
+
 }

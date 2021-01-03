@@ -18,11 +18,11 @@ Un petit casse brique fait maison
 - [X] LvL Rand-Gen Loading
 - [ ] Special Objects
 - [ ] Changer d'angle de vue
-- [ ] Death on ground
-- [ ] Custom Lvl Easy loading
+- [X] Death on ground
+- [X] Custom Lvl Easy loading
 
 ## Si possible dans les temps
 
 - [ ] Improve Overall Visual
-- [ ] Improve Overall Collision
+- [X] Improve Overall Collision
 - [ ] Light Effects
