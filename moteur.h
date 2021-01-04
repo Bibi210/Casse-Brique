@@ -17,6 +17,8 @@
 #include <float.h>
 #include "liste.h"
 #define EPSILON ((double)FLT_EPSILON)
+#define True 1
+#define False 0
 
 #  ifdef __cplusplus
 extern "C" {

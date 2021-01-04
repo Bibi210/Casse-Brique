@@ -31,6 +31,7 @@ extern void list_push(liste_t *l, void *data)
     l->list_size++;
 }
 
+// Insert a data to a given n
 extern void list_insert_at(liste_t *l, void *data, unsigned long long n)
 {
     if (n == 0)
@@ -64,6 +65,7 @@ extern void list_insert_at(liste_t *l, void *data, unsigned long long n)
     l->list_size++;
 }
 
+//Add a data to the end of the list
 void list_append(liste_t *l, void *data)
 {
     if (l->list_size == 0)
@@ -90,6 +92,8 @@ void list_append(liste_t *l, void *data)
     }
     l->list_size++;
 }
+
+//Print a list with a given printf_function
 extern void list_printf(liste_t *l, void print_func(void *))
 {
     for (cell_t *current = l->premier; current != NULL; current = current->next)
@@ -100,6 +104,7 @@ extern void list_printf(liste_t *l, void print_func(void *))
     printf("\nFin_liste\n");
 }
 
+//Del an element from the list
 void list_del_at(liste_t *l, unsigned long long n)
 {
     cell_t *current;
@@ -130,6 +135,7 @@ void list_del_at(liste_t *l, unsigned long long n)
     l->list_size--;
 }
 
+//Free the list
 extern void list_free(liste_t *l)
 {
     while (l->list_size != 0)

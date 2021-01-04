@@ -54,7 +54,7 @@ vertex_t vtransform(surface_t * s, vertex_t v, float * mvMat, float * timvMat, f
     /* la lumière est positionnelle et fixe dans la scène. \todo dans
        scene.c la rendre modifiable, voire aussi pouvoir la placer par
        rapport aux objets (elle subirait la matrice modèle). */
-    const vec4 lp[1] = { {0.0f, 0.0f, 1.0f} };
+    const vec4 lp[1] = { {0.0f, 0.0f, 1.0f,0} };
     vec4 ld = {lp[0].x - r1.x, lp[0].y - r1.y, lp[0].z - r1.z, lp[0].w - r1.w};
     float n[4] = {v.normal.x, v.normal.y, v.normal.z, 0.0f}, res[4];
     MMAT4XVEC4(res, timvMat, n);

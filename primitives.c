@@ -462,22 +462,13 @@ inline void shading_all(surface_t *s, GLuint *pcolor, vertex_t *v)
   *pcolor = rgba(r, g, b, a);
 }
 
-/*!\brief interpolation de plusieurs floattants (entre \a s et \a e)
- * de la structure vertex_t en utilisant \a a et \a b, les
- * facteurs \a fa et \a fb, le tout dans \a r 
- * \todo un pointeur de fonction pour éviter un test s'il faut
- * un _perpective_correction != 0 ??? */
+
 inline void interpolate(vertex_t *r, vertex_t *a, vertex_t *b, float fa, float fb, int s, int e)
 {
   int i;
   float *pr = (float *)&(r->texCoord);
   float *pa = (float *)&(a->texCoord);
   float *pb = (float *)&(b->texCoord);
-  /* Correction de l'interpolation par rapport à la perspective, le z
-   * joue un rôle dans les distances, il est nécessaire de le
-   * réintégrer en modifiant les facteurs de proportion.
-   * lien utile : https://www.scratchapixel.com/lessons/3d-basic-rendering/rasterization-practical-implementation/perspective-correct-interpolation-vertex-attributes 
-   */
   if (_perpective_correction)
   {
     float z = 1.0f / (fa / a->zmod + fb / b->zmod);

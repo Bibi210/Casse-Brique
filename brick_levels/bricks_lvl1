@@ -1,6 +1,2 @@
-// Format [Coords][X,Y,Z]:[Scale][X,Y,Z]
-// Exemple [1.5;2.6;1]:[1,1,1] Il est possible de doubler les briques
-// Il faut finir le fichier a la derniere brique
-
-[7.0;1.0;1.0;]:[2.0;1.0;1.0;]
-[-7.0;1.0;1.0;]:[2.0;1.0;1.0;]
+[7.0;1.0;1.0;]:[2.0;1.0;1.0;][0;]
+[-7.0;1.0;1.0;]:[2.0;1.0;1.0;][0;]
