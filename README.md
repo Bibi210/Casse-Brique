@@ -4,9 +4,9 @@ Un petit casse brique fait maison
 
 ## Installer le jeu
 
-`git clone https://code.up8.edu/BrahimaDibassi/brick-destroyer.git`
-`make`
-`brick_destroyer nb_lvl_custom`
+- `git clone https://code.up8.edu/BrahimaDibassi/brick-destroyer.git`
+- `make`
+-`brick_destroyer nb_lvl_custom`
     Par defaut nb_lvl_custom est a 3
 
 ## Commande du jeu 
